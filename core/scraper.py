@@ -31,19 +31,19 @@ cur_case_number = 50000
 keep_workers_alive = True
 worker_amount = 2
 
-data_file = open('output.txt', 'a')
+data_file = open('output.txt', 'a+')
 
 def atomic_write(time_stamp, case_number, status):
     write_lock = threading.Lock()
     with write_lock:
         data_file.write("%s, %s, %s\n" %(case_number, time_stamp, status))
+        date_file.flush()
 
 
 
 def working_thread():
     global keep_workers_alive
     while keep_workers_alive:
-        print("Ok")
         time.sleep(2)
         next_case_number = get_next_number()
         data = fetch_data(next_case_number)
