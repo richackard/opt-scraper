@@ -37,7 +37,7 @@ def atomic_write(time_stamp, case_number, status):
     write_lock = threading.Lock()
     with write_lock:
         data_file.write("%s, %s, %s\n" %(case_number, time_stamp, status))
-        date_file.flush()
+        data_file.flush()
 
 
 
