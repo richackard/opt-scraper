@@ -29,7 +29,7 @@ FORM_WRONG_VERSION = "Case Rejected Because The Version Of The Form I Sent Is No
 
 cur_case_number = 50000
 keep_workers_alive = True
-worker_amount = 2
+worker_amount = 1
 
 data_file = open('output.txt', 'a+')
 
@@ -44,7 +44,7 @@ def atomic_write(time_stamp, case_number, status):
 def working_thread():
     global keep_workers_alive
     while keep_workers_alive:
-        time.sleep(2)
+        time.sleep(3)
         next_case_number = get_next_number()
         data = fetch_data(next_case_number)
         if data:
