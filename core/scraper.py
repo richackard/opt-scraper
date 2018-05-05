@@ -27,11 +27,13 @@ CARD_NOT_ABLE_TO_DELIVER = "Notice Was Returned To USCIS Because The Post Office
 FORM_DIDNT_SIGN = "Case Was Rejected Because I Did Not Sign My Form"
 FORM_WRONG_VERSION = "Case Rejected Because The Version Of The Form I Sent Is No Longer Accepted"
 
-cur_case_number = 50000
+cur_case_number = 120000
+stop_case_number = 140000
 keep_workers_alive = True
 worker_amount = 1
 
-data_file = open('output.txt', 'a+')
+timestamp = int(time.time() * 1000)
+data_file = open("/var/log/opt-scraper/output-%d.txt" % timestamp, 'a+')
 
 def atomic_write(time_stamp, case_number, status):
     write_lock = threading.Lock()
@@ -44,7 +46,7 @@ def atomic_write(time_stamp, case_number, status):
 def working_thread():
     global keep_workers_alive
     while keep_workers_alive:
-        time.sleep(3)
+        time.sleep(2)
         next_case_number = get_next_number()
         data = fetch_data(next_case_number)
         if data:
@@ -55,7 +57,7 @@ def working_thread():
             month = extracted_date.month
             day = extracted_date.day
             atomic_write("%04d%02d%02d" % (year, month, day),  next_case_number, status)
-            print("Thread %s, Case number: %s  -> Status: %s on %04d%02d%02d" % (threading.get_ident(), next_case_number, data['status'], year, month, day))
+            print("Thread %s, Case number: %s  -> Status: %s on %04d%02d%02d : I-765? %s" % (threading.get_ident(), next_case_number, data['status'], year, month, day, ("Yes" if is_OPT_receipt(data['content']) else "No")))
             if status == CASE_RECEIVED:
                 if is_OPT_receipt(data['content']):
                     pass
@@ -90,6 +92,8 @@ def fetch_data(case_number):
         'upcomingActionsCurrentPage': '0',
         'appReceiptNum': case_number,
         'caseStatusSearchBtn': 'CHECK STATUS'
+    }, headers={
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36'
     })
     data_content = res.content
     
@@ -103,7 +107,7 @@ def fetch_data(case_number):
         if "Validation Error" in error_msg.get_text():
             # We reach the end, end all the workers. BYE BYE.
             global keep_workers_alive
-            keep_workers_alive = False            
+            keep_workers_alive = False      
 
     if core_data:
         # Remove anchor tag
@@ -121,8 +125,12 @@ def fetch_data(case_number):
 
 def get_next_number():
     global cur_case_number
+    global stop_case_number
+    global keep_workers_alive
     lock = threading.Lock()
     with lock:
+        if cur_case_number == stop_case_number:
+            keep_workers_alive = False
         cur_case_number += 1
         return "YSC1890%06d" % cur_case_number 
 
@@ -135,7 +143,7 @@ for i in range(worker_amount):
     thread_list.append(t)
 
 for thread in thread_list:
-    time.sleep(1)
+    time.sleep(2)
     thread.start()
 
 for thread in thread_list:
